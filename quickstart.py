@@ -7,6 +7,7 @@ from PIL import Image, ImageTk
 """
 ./certifs is the location of folder with the pdfs in it
 why am i using pystray? cuz window.
+has support for multi-worded name, hence the code complexity
 """
 
 # Creating window basics
@@ -74,7 +75,7 @@ def mainFunc():
 
 def temp_text(e): text.delete(0,"end")
 text = Entry(win, width=40,  font=("Comic Sans MS", 10, "bold"))
-text.insert(0, "krish")
+text.insert(0, "   Input your name here")
 text.pack(pady = 80, padx=10)
 text.bind("<FocusIn>", temp_text)
 
