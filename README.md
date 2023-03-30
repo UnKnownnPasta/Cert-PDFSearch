@@ -13,4 +13,6 @@ Needs:
   
 ## How to use 
 ### ~~noone would or has the use for this anyways~~
-Just type in a name in the text field and click find. Program might freeze for a sec but it'll return with status of search at the top gray bar.
+Just type in a name in the text field and click find. It'll give you the result at the top bar; if there's pdfs found then below the status bar will be the pdf name (which you can copy) and below that an option to download the file directly.
+
+##### Note: Download currently doesn't work
