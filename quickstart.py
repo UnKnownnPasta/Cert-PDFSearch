@@ -1,5 +1,6 @@
-import PyPDF2, os, threading
+import PyPDF2, os, threading, sys, re
 from tkinter import *
+from tkinter import filedialog
 from pystray import MenuItem as item
 import pystray
 from PIL import Image, ImageTk
@@ -9,25 +10,42 @@ from PIL import Image, ImageTk
 why am i using pystray? cuz window.
 """
 
+def resource_path(relative_path):
+    """ Get the absolute path to the resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
 def main():
     # Creating window basics
     win = Tk()
     win.title('$ ᴘʏꜱᴇᴀʀᴄʜ')
     win.configure(bg='#2c2c2c')
-    win.resizable(False, False)
-    win.iconphoto(False, PhotoImage(file='projic.png'))
+    # win.resizable(False, False)
+    win.iconphoto(False, PhotoImage(file=resource_path('projic.png')))
     win.geometry("410x400")
 
     # status label
-    label = Label(win, text='- - - - -', background='#C0C0C0', borderwidth=1, font=('Segoe UI Light', 20, 'italic'), relief="solid", width=29, height=1, foreground='black')
+    label = Label(win, text='- - - - -', background='#C0C0C0', borderwidth=1, font=('Segoe UI Light', 20, 'italic'), relief="solid", width=30, height=1, foreground='black')
     label.pack()
     label.pack_propagate(0)
     label.place(y=20, x=0)
 
-    output = Label(win, text=' ', background='#7F7F7F', borderwidth=1, font=('Segoe UI Light', 20, 'italic'), relief="solid", width=30, height=3, foreground='black')
+    output = Text(win, background='#7F7F7F', borderwidth=1, font=('Segoe UI Light', 20, 'italic'), relief="solid", width=20, height=1, foreground='black')
     output.pack()
     output.pack_propagate(0)
-    output.place(x=0, y= 80)
+    output.place(x=70, y= 100, anchor=W)
+    output['state'] = DISABLED
+
+    download = Button(win, text="..OR DOWNLOAD", font=('Minion Pro Med', 10, 'bold'), relief='flat', bg='#696880', width=50, height=2, activebackground='#3E3D53')
+    download.pack_propagate(0)
+    download.place(x=420, y=150)
+    download.pack_forget()
+
 
     def searchPDF(inp):
         results=[]
@@ -36,11 +54,12 @@ def main():
         if inp == 'Input': return 'stop'
 
         label.configure(text='Searching...')
-        output.configure(text=' ')
+        output['state'] = NORMAL; output.delete(1.0, 'end')
+        output.insert(1.0, '-'); output['state'] = DISABLED
 
-        for fname in os.listdir('./certifs'):
+        for fname in os.listdir(resource_path('./certifs')):
             if fname.endswith('.pdf'):
-                with open(os.path.join('./certifs', fname), 'rb') as file: # open file per iteration
+                with open(os.path.join(resource_path('./certifs'), fname), 'rb') as file: # open file per iteration
                     text = str(PyPDF2.PdfReader(file).pages[0].extract_text()).split(' ') # 
 
                     for i in text:
@@ -52,6 +71,10 @@ def main():
         else: return 'placeholderfornonebecauseyes'
 
     def mainFunc():
+        download.place(x=420)
+        output['state'] = NORMAL; output.delete(1.0, 'end')
+        output.insert(1.0, '-'); output['state'] = DISABLED
+        b['state'] = DISABLED
         run = []
         i1 = text.get().strip()
         i2 = i1.split(' ')
@@ -64,20 +87,19 @@ def main():
                     run.append(j)
         else: run.append(searchPDF(i2[0]))
 
-        if run[0] == 'placeholderfornonebecauseyes' or len(run[0]) == 1: return label.config(text='Could not find a certificate.')
+        if run[0] == 'placeholderfornonebecauseyes' or len(run[0]) == 1: label.config(text='Could not find a certificate.')
 
-        # label.config(text=f'Found {sum(len(i) for i in run)} pdfs, please wait..')
+        b['state'] = NORMAL
         finalResult = collectedNames = []
         collectedNames = [i[-1] for i in run if i[-1] not in collectedNames]
 
         for i in run:
             for j in range(0,len(i)-1):
-                with open(os.path.join(f'./certifs/{i[j]}'), 'rb') as file:
+                with open(os.path.join(resource_path(f'./certifs/{i[j]}')), 'rb') as file:
                     check = PyPDF2.PdfReader(file)
                     t = str(check.pages[0].extract_text()).split(' ')
                     g = [word.strip() for word in t if word.strip() != '']
 
-                    print(collectedNames, g)
                     for n in range(0, len(collectedNames)):
                         if len(collectedNames)-1 == n and len(collectedNames) <= len(g):
                             teststring1 = teststring2 = ''
@@ -88,14 +110,25 @@ def main():
                             if teststring1 == teststring2:
                                 finalResult.append(file.name)
 
-        print(run, finalResult)
         result = ''
         for i in finalResult[:1]:
-            result += f"""{i.replace('./certifs/', '')}
-"""
-        output.configure(text=result)
+            result += f"{re.sub(r'^.*?SA_cert', 'SA_cert', i)}"
+        output['state'] = NORMAL; output.delete(1.0, 'end')
+        output.insert(1.0, f'   {result}'); output['state'] = DISABLED
 
-        return label.configure(text=f'Found {len(finalResult)} pdfs')
+        if len(finalResult) > 0:
+            def fileDwn():
+                files = [('All Files', '*.*'), 
+                ('Python Files', '*.py'),
+                ('Text Document', '*.txt'),
+                ('PDF Document', '*.pdf')]
+                f = filedialog.asksaveasfile(filetypes = files, defaultextension = '.pdf', title='Save Sustainability Accelerator file', initialfile=result)
+                if f is None: return
+                f.write(os.path.join(resource_path('./certifs')))
+            download.place(x=0, y=150);
+            download.config(command=fileDwn)
+        
+        return label.configure(text=f'Found {len(finalResult)} pdfs - Copy Name below')
 
     def start_combine_in_bg():
         threading.Thread(target=mainFunc).start()
@@ -124,7 +157,7 @@ def main():
     # Hide the window and show on the system taskbar
     def hide_window():
         win.withdraw()
-        image = Image.open("projic.png")
+        image = Image.open(resource_path("projic.png"))
         menu = (item('name', action), item('name', action))
         icon = pystray.Icon("name", image, "title", menu)
         icon.run()
