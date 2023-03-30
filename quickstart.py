@@ -7,7 +7,6 @@ from PIL import Image, ImageTk
 """
 ./certifs is the location of folder with the pdfs in it
 why am i using pystray? cuz window.
-has support for multi-worded name, hence the code complexity
 """
 
 # Creating window basics
@@ -25,18 +24,17 @@ label.pack(pady = 20)
 
 def searchPDF(inp):
     results=[]
+    inp = inp.strip()
     if inp == '': return 'placeholderfornonebecauseyes'
     if inp == 'Input': return 'stop'
 
     for fname in os.listdir('./certifs'):
         if fname.endswith('.pdf'):
             with open(os.path.join('./certifs', fname), 'rb') as file: # open file per iteration
-                pdf = PyPDF2.PdfReader(file)
-                text = str(pdf.pages[0].extract_text())
-                splitlist = text.split(' ')
+                text = str(PyPDF2.PdfReader(file).pages[0].extract_text()).split(' ') # 
 
-                for i in splitlist:
-                    if i.strip().lower().startswith(inp.lower()):
+                for i in text:
+                    if i.strip().lower().startswith(inp.lower()) and i.strip() != '':
                         results.append(fname)
 
     results.append(inp)
@@ -45,37 +43,46 @@ def searchPDF(inp):
 
 def mainFunc():
     run = []
-    i1 = text.get()
+    i1 = text.get().strip()
     i2 = i1.split(' ')
 
     if len(i2) > 1:
-        for i in i2:
-            j = searchPDF(i)
-            if j == 'stop': break
-            run.append(j)
+        for o in i2:
+            if o.strip() != '':
+                j = searchPDF(o)
+                if j == 'stop': break
+                run.append(j)
     else: run.append(searchPDF(i2[0]))
 
     if run[0] == 'placeholderfornonebecauseyes' or len(run[0]) == 1: return label.config(text='Could not find a certificate.')
 
     label.config(text=f'Found {sum(len(i) for i in run)} pdfs, please wait..')
-    finalResult = []
+    finalResult = collectedNames = []
+    collectedNames = [i[-1] for i in run if i[-1] not in collectedNames]
 
     for i in run:
         for j in range(0,len(i)-1):
-            print(j)
             with open(os.path.join(f'./certifs/{i[j]}'), 'rb') as file:
                 check = PyPDF2.PdfReader(file)
-                t = str(check.pages[0].extract_text())
-                t = t.split(' ')
-                if (t[0] == i[-1]) or (t[0].lower() == i[-1].lower()) or (t[1] == i[-1]) or (t[1].lower() == i[-1].lower()):
-                    finalResult.append(file.name)
+                t = str(check.pages[0].extract_text()).split(' ')
+                g = [word.strip() for word in t if word.strip() != '']
 
-    print(finalResult)
+                for n in range(0, len(collectedNames)):
+                    if len(collectedNames)-1 == n:
+                        teststring1 = teststring2 = ''
+                        for lk in range(0, len(collectedNames)):
+                            teststring1 += g[lk].lower() + ' '
+                            teststring2 += collectedNames[lk].lower() + ' '
+
+                        if teststring1 == teststring2:
+                            finalResult.append(file.name)
+
+    print('Found:', finalResult)
 
 
 def temp_text(e): text.delete(0,"end")
 text = Entry(win, width=40,  font=("Comic Sans MS", 10, "bold"))
-text.insert(0, "   Input your name here")
+text.insert(0, "  Enter your name here!")
 text.pack(pady = 80, padx=10)
 text.bind("<FocusIn>", temp_text)
 
@@ -98,5 +105,4 @@ def hide_window():
 
 win.protocol('WM_DELETE_WINDOW', quit_window)
 
-
-win.mainloop()
+if __name__ == '__main__': win.mainloop()
