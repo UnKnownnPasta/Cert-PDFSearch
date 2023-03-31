@@ -1,4 +1,4 @@
-import PyPDF2, os, threading, sys, re
+import PyPDF2, os, threading, sys, re, shutil
 from tkinter import *
 from tkinter import filedialog
 from pystray import MenuItem as item
@@ -47,17 +47,18 @@ def main():
     download.pack_forget()
 
 
-    def searchPDF(inp):
+    def searchPDF(inp, a, b):
         results=[]
         inp = inp.strip()
         if inp == '': return 'placeholderfornonebecauseyes'
         if inp == 'Input': return 'stop'
 
-        label.configure(text='Searching...')
         output['state'] = NORMAL; output.delete(1.0, 'end')
         output.insert(1.0, '-'); output['state'] = DISABLED
-
+        
         for fname in os.listdir(resource_path('./certifs')):
+            a+=1
+            label.configure(text=f'Searching ({a}/{b})')
             if fname.endswith('.pdf'):
                 with open(os.path.join(resource_path('./certifs'), fname), 'rb') as file: # open file per iteration
                     text = str(PyPDF2.PdfReader(file).pages[0].extract_text()).split(' ') # 
@@ -67,8 +68,8 @@ def main():
                             results.append(fname)
 
         results.append(inp)
-        if len(results) != 0: return results
-        else: return 'placeholderfornonebecauseyes'
+        if len(results) != 0: return results, a
+        else: return 'placeholderfornonebecauseyes', a
 
     def mainFunc():
         download.place(x=420)
@@ -78,14 +79,17 @@ def main():
         run = []
         i1 = text.get().strip()
         i2 = i1.split(' ')
+        nu, nv = 0, len(os.listdir(resource_path('./certifs')))*len(i2)
 
         if len(i2) > 1:
             for o in i2:
                 if o.strip() != '':
-                    j =searchPDF(o)
+                    j, nu = searchPDF(o, nu, nv)
                     if j == 'stop': break
                     run.append(j)
-        else: run.append(searchPDF(i2[0]))
+        else: 
+            k, nu = searchPDF(i2[0], nu, nv)
+            run.append(k)
 
         if run[0] == 'placeholderfornonebecauseyes' or len(run[0]) == 1: label.config(text='Could not find a certificate.')
 
@@ -117,16 +121,16 @@ def main():
         output.insert(1.0, f'   {result}'); output['state'] = DISABLED
 
         if len(finalResult) > 0:
-            def fileDwn():
-                files = [('All Files', '*.*'), 
-                ('Python Files', '*.py'),
-                ('Text Document', '*.txt'),
-                ('PDF Document', '*.pdf')]
-                f = filedialog.asksaveasfile(filetypes = files, defaultextension = '.pdf', title='Save Sustainability Accelerator file', initialfile=result)
-                if f is None: return
-                f.write(os.path.join(resource_path('./certifs')))
+            def save_file():
+                files = [('All Files', '*.*'), ('PDF Document', '*.pdf')]
+                source_file = finalResult[0]
+                dest_file = filedialog.asksaveasfilename(filetypes = files, defaultextension=".pdf", initialfile=result)
+                if dest_file:
+                    shutil.copyfile(source_file, dest_file)
+                    print(f"File saved as {dest_file}")
+
             download.place(x=0, y=150);
-            download.config(command=fileDwn)
+            download.config(command=save_file)
         
         return label.configure(text=f'Found {len(finalResult)} pdfs - Copy Name below')
 
